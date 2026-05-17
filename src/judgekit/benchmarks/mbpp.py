@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import itertools
 from collections.abc import Iterator
+from typing import Any
+
+from datasets import load_dataset
 
 from judgekit.benchmarks.base import BenchmarkAdapter, BenchmarkItem
 
@@ -13,4 +17,16 @@ class MBPPAdapter(BenchmarkAdapter):
         self._split = split
 
     def iter_items(self) -> Iterator[BenchmarkItem]:
-        raise NotImplementedError
+        dataset: Any = load_dataset("mbpp", split=self._split)
+        items: Iterator[Any] = iter(dataset)
+        if self._n is not None:
+            items = itertools.islice(items, self._n)
+        for item in items:
+            yield BenchmarkItem(
+                id=str(item["task_id"]),
+                question=str(item["text"]),
+                reference_answer=str(item["code"]),
+                metadata={
+                    "test_list": item["test_list"],
+                },
+            )
