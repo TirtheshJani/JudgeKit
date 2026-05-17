@@ -2,13 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status
-
-This repo is currently a stub (LICENSE + one-line README). There is no Python package, tests, or config yet. The sections below describe the **intended design** so the first scaffolding work stays consistent with the project's framing.
-
 ## What JudgeKit is
 
 A Python package (`judgekit`, to be published to PyPI) that runs the same prompt set across five LLM judges from different vendor families, then reports cross-judge agreement statistics and disagreement clustering. The product framing is deliberate: a multi-judge framework with explicit cost accounting, not a "GPT-4 as judge" wrapper.
+
+The repo is currently a stub (LICENSE, one-line README, this file). No source, tests, or config yet — the sections below describe the **intended design** so the first scaffolding session stays consistent with the project's framing.
 
 The five judges are fixed by design — do not silently swap or drop one without flagging it:
 
@@ -18,7 +16,7 @@ The five judges are fixed by design — do not silently swap or drop one without
 | Llama 3.3 70B | Cerebras | OpenAI-compatible |
 | DeepSeek R1 | SambaNova | OpenAI-compatible |
 | Qwen3-8B INT4 | local vLLM | OpenAI-compatible |
-| Claude Sonnet 4.5 | Anthropic | Anthropic SDK (wrapped to look OpenAI-compatible) |
+| Claude Sonnet 4.5 (`claude-sonnet-4-5`) | Anthropic | Anthropic SDK (wrapped to look OpenAI-compatible) |
 
 The paid Anthropic judge is load-bearing for the project's positioning — it is the "deliberate cost-discipline tradeoff" framing. Total experiment cost target: **under $25 USD**. Token-budget accounting must be visible in outputs/reports.
 
@@ -31,7 +29,28 @@ The paid Anthropic judge is load-bearing for the project's positioning — it is
 - **Agreement statistics**: Cohen's kappa (pairwise), Krippendorff's alpha (overall), plus disagreement clustering. Don't report only mean agreement — disagreement *modes* are a stated deliverable.
 - **Benchmarks**: PubMedQA, MedQA, MMLU clinical subsets, HumanEval, MBPP. Medical + code is intentional; the cross-domain split is part of the story.
 
-## Deliverables (the asset is the framing, not just the code)
+### Environment variables
+
+Expected API-key env vars (used by the single client based on which vendor is configured):
+
+- `GROQ_API_KEY`
+- `CEREBRAS_API_KEY`
+- `SAMBANOVA_API_KEY`
+- `OPENROUTER_API_KEY`
+- `ANTHROPIC_API_KEY`
+
+The local vLLM endpoint needs no key; default to `http://localhost:8000/v1` unless overridden in the eval YAML.
+
+## Commands
+
+The only command fixed at this point is the local judge server. Add `pytest` / lint / build commands here once `pyproject.toml` exists.
+
+```bash
+# Serve Qwen3-8B INT4 as the local judge (RTX 4080)
+vllm serve Qwen/Qwen3-8B --quantization awq --gpu-memory-utilization 0.85 --max-model-len 4096
+```
+
+## Deliverables
 
 1. PyPI package `judgekit`.
 2. GitHub repo with reproducible eval YAML configs.
