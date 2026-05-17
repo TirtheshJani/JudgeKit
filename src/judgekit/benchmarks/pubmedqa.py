@@ -1,0 +1,16 @@
+from __future__ import annotations
+
+from collections.abc import Iterator
+
+from judgekit.benchmarks.base import BenchmarkAdapter, BenchmarkItem
+
+
+class PubMedQAAdapter(BenchmarkAdapter):
+    """Loads PubMedQA (pqa_labeled) from Hugging Face datasets."""
+
+    def __init__(self, n: int | None = None, split: str = "train") -> None:
+        self._n = n
+        self._split = split
+
+    def iter_items(self) -> Iterator[BenchmarkItem]:
+        raise NotImplementedError

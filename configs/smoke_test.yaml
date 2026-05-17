@@ -1,0 +1,11 @@
+run_id: smoke_test
+seed: 42
+budget_usd: 1.0
+judges:
+  - vendor: groq
+    model: llama-3.3-70b-versatile
+    max_tokens: 256
+benchmarks:
+  - name: pubmedqa
+    n: 10
+    split: train
