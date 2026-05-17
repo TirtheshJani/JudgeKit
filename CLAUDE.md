@@ -72,4 +72,6 @@ Project-level skills are installed under `.claude/skills/`. Invoke by name when 
 - `writing-plans` and `executing-plans` for per-phase implementation plans (see `PLAN.md` section 1a).
 - `test-driven-development` is the default for all code-writing tasks (no training loops in JudgeKit, so no exemptions).
 - `dispatching-parallel-agents` when building independent components (vendor clients, benchmark adapters).
+- `using-git-worktrees` whenever parallel agents are dispatched. Worktrees live under `.worktrees/` (gitignored).
+- `systematic-debugging` for every bug investigation. Iron law: root cause before fix.
 - `karpathy-guidelines` for behavior baseline.

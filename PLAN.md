@@ -15,6 +15,8 @@ This plan is governed by five skills installed at `.claude/skills/`. Future Clau
 - **test-driven-development** is the default for every code-writing task in this repo. No production code without a failing test first. The only exemption pre-agreed with the user is training loops, and JudgeKit has none, so TDD is universal here.
 - **dispatching-parallel-agents** applies in Phases 3 and 5 where multiple independent vendor clients or benchmark adapters can be built concurrently.
 - **karpathy-guidelines** is the behavior baseline: surface assumptions, simplicity first, surgical changes, goal-driven execution.
+- **using-git-worktrees** is the workspace-isolation pattern. Phase 0 sets up `.worktrees/` (gitignored). Used in Phases 3 and 5 where parallel agents need conflict-free trees; single-threaded phases work directly on `claude/multi-judge-evals-xvHDQ` without worktrees (per `karpathy-guidelines` simplicity: don't add isolation where there's nothing to isolate from).
+- **systematic-debugging** governs every bug investigation. Iron law: no fixes without root-cause investigation first. Particularly relevant supporting docs: `condition-based-waiting.md` for retry/rate-limit tests (no `time.sleep` in tests; poll a condition), `root-cause-tracing.md` for malformed-judgment-output debugging in Phase 3, `defense-in-depth.md` for the budget tracker + circuit breaker + estimator layering.
 
 The `writing-plans` skill suggests `docs/superpowers/plans/` as the plan directory. This repo uses `docs/plans/` instead (no "superpowers" rebrand inside a public package).
 
@@ -128,13 +130,16 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 - Dev deps: ruff, mypy, pytest, pytest-cov, pytest-httpx, respx.
 - `.pre-commit-config.yaml` with ruff, ruff-format, mypy.
 - `.github/workflows/ci.yml`: ubuntu-latest, matrix on Python 3.11 only initially.
-- `.gitignore` for results/, .venv, .ruff_cache, dist/, build/.
+- `.gitignore` for results/, .venv, .ruff_cache, dist/, build/, **.worktrees/**.
 - Empty package skeleton (every module above as a stub with `pass` or a typed-but-unimplemented signature).
+- Create `.worktrees/` directory (or document a different preferred location in `CLAUDE.md`).
+- Verify `.worktrees/` is gitignored with `git check-ignore -q .worktrees`, per `.claude/skills/using-git-worktrees`.
 
 **Gate.**
 - `uv run pytest` returns "no tests ran" without import errors.
 - `uv run ruff check .` and `uv run mypy src/judgekit` both pass.
 - CI workflow green on first push.
+- `git check-ignore -q .worktrees` exits 0 (directory is ignored).
 
 **Dependencies.** None.
 
@@ -206,7 +211,7 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 
 **TDD:** Red-green-refactor per `.claude/skills/test-driven-development` for both client wiring and agreement statistics.
 
-**Parallel dispatch:** Cerebras, SambaNova, and OpenRouter client wiring are independent of each other (each is a base-URL change plus tests). Per `.claude/skills/dispatching-parallel-agents`, dispatch one agent per vendor, each with the focused scope "wire vendor X through `openai_compat`, add tests for it, do not touch other vendors." Reviewer integrates.
+**Parallel dispatch:** Cerebras, SambaNova, and OpenRouter client wiring are independent of each other (each is a base-URL change plus tests). Per `.claude/skills/dispatching-parallel-agents`, dispatch one agent per vendor. Each agent works in its own worktree per `.claude/skills/using-git-worktrees` (e.g. `.worktrees/phase-3-cerebras/`), with the focused scope "wire vendor X through `openai_compat`, add tests for it, do not touch other vendors." Reviewer integrates by merging worktree branches into `claude/multi-judge-evals-xvHDQ` sequentially.
 
 **Work.**
 - Wire Cerebras, SambaNova, OpenRouter through `openai_compat` with their respective base URLs and free-tier model IDs. OpenRouter free-tier model choice: default to `meta-llama/llama-3.3-70b-instruct:free` (subject to availability, see risk R5).
@@ -261,7 +266,7 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 
 **TDD:** Red-green-refactor per `.claude/skills/test-driven-development`. Each adapter starts with a "known item at fixed index has expected fields" test.
 
-**Parallel dispatch:** MedQA, MMLU clinical, HumanEval, and MBPP adapters are independent. Per `.claude/skills/dispatching-parallel-agents`, dispatch one agent per benchmark with scope "implement adapter X with TDD against the HF dataset, do not touch other benchmarks or the runner."
+**Parallel dispatch:** MedQA, MMLU clinical, HumanEval, and MBPP adapters are independent. Per `.claude/skills/dispatching-parallel-agents`, dispatch one agent per benchmark, each in its own worktree per `.claude/skills/using-git-worktrees` (e.g. `.worktrees/phase-5-medqa/`), with scope "implement adapter X with TDD against the HF dataset, do not touch other benchmarks or the runner."
 
 **Work.**
 - `benchmarks/medqa.py`: HF `bigbio/med_qa` or `GBaker/MedQA-USMLE-4-options`; license check.
@@ -371,11 +376,11 @@ This sets the headline run size. The other four judges run on the same item set 
 | ID | Risk | Likelihood | Impact | Mitigation |
 |----|------|-----------|--------|-----------|
 | R1 | Anthropic spend overruns $25 cap | Med | High | Circuit breaker in `budget/circuit_breaker.py` blocks calls whose estimated cost would exceed cap. Pre-flight estimator required before any non-smoke run. Manual check against Anthropic console after first 100 Claude calls. |
-| R2 | Free-tier rate limits cause cascading failures | High | Med | Per-vendor token-bucket inside `retry.py`. Sequential queueing on the tightest-limited vendor (Groq 30 RPM on 70B). Long runs scheduled overnight. |
+| R2 | Free-tier rate limits cause cascading failures | High | Med | Per-vendor token-bucket inside `retry.py`. Sequential queueing on the tightest-limited vendor (Groq 30 RPM on 70B). Long runs scheduled overnight. Retry tests use condition-based polling per `.claude/skills/systematic-debugging/condition-based-waiting.md`, never `time.sleep`. If rate-limit failures cascade in practice, follow `.claude/skills/systematic-debugging` Phase 1 before changing the decorator. |
 | R3 | Free-tier endpoint disappears or changes model availability | Med | High | Vendor registry takes a `fallback_model_id`. Document which judges were live as of run date in the manifest. If a vendor dies before Phase 6, swap to an equivalent free judge from OpenRouter and note the substitution in the tech note. |
-| R4 | DeepSeek R1 reasoning output (with `<think>` tags or long chain-of-thought) breaks the label parser | Med | Med | Prompt template explicitly instructs final-line labeling. Parser tolerates leading reasoning blocks and extracts the last line matching the label rubric. Test fixture with a verbose DeepSeek-style response. |
+| R4 | DeepSeek R1 reasoning output (with `<think>` tags or long chain-of-thought) breaks the label parser | Med | Med | Prompt template explicitly instructs final-line labeling. Parser tolerates leading reasoning blocks and extracts the last line matching the label rubric. Test fixture with a verbose DeepSeek-style response. If parser bugs surface, trace the malformed output back through the call stack per `.claude/skills/systematic-debugging/root-cause-tracing.md` rather than catching the exception at the parser site. |
 | R5 | OpenRouter free-tier model availability changes mid-run | Med | Med | Pin the exact OpenRouter slug in the YAML config. If unavailable at runtime, fail loudly rather than silently swapping. |
-| R6 | Token-count estimation diverges between providers (no shared tokenizer) | Med | Low | Estimator uses `anthropic.messages.count_tokens` for Anthropic, `tiktoken` cl100k as an approximation for the OpenAI-compat vendors. Document this in README. The estimator is for budget planning, not billing. |
+| R6 | Token-count estimation diverges between providers (no shared tokenizer) | Med | Low | Estimator uses `anthropic.messages.count_tokens` for Anthropic, `tiktoken` cl100k as an approximation for the OpenAI-compat vendors. Document this in README. Per `.claude/skills/systematic-debugging/defense-in-depth.md`, the budget guarantee comes from three layers: estimator (pre-flight), tracker (running tally), circuit breaker (hard cap before HTTP). The estimator is for budget planning, not billing. |
 | R7 | Benchmark answer-key licensing ambiguous for redistribution | Med | Med | Verify each dataset license before Phase 5. PubMedQA (MIT), MMLU (MIT), HumanEval (MIT), MBPP (CC-BY-4.0) are clean. MedQA: check license; if ambiguous, do not redistribute, load from HF at runtime only and document that the user pulls it themselves. |
 | R8 | Reproducibility: providers do not honor `temperature=0` strictly | High | Med | Set `temperature=0`, `top_p=1`, document that exact-reproduction is not guaranteed across providers. The reproducibility claim is about the *recipe* (configs, prompts, model IDs, seed where supported), not byte-identical outputs. |
 | R9 | vLLM OOM on 4080 16GB serving Qwen3-8B INT4 at `--max-model-len 4096` | Low | Low | Already constrained by `--gpu-memory-utilization 0.85`. If OOM, drop to `--max-model-len 2048`. Local judge is optional; not on the critical path. |
@@ -384,6 +389,8 @@ This sets the headline run size. The other four judges run on the same item set 
 | R12 | CI minutes blown on accidental live API calls in tests | Low | Med | `pytest-httpx` configured in strict mode; tests fail if any unmocked HTTP call is attempted. CI does not have API key env vars. |
 | R13 | A phase is executed without a per-phase plan file (drift from methodology) | Med | Med | Each phase's gate now requires the per-phase plan file to exist at `docs/plans/...` before any code is written. Phase 0 acceptance includes adding this rule to `CLAUDE.md`. |
 | R14 | TDD violated under time pressure ("I'll add tests after") | High | Med | The TDD skill's iron law applies: code without a preceding failing test is deleted and re-done. Self-review at end of each phase verifies test-first by inspecting commit order (test commit precedes implementation commit). |
+| R15 | Worktree-per-phase workflow not followed in parallel-dispatch phases, causing merge conflicts | Med | Med | `.claude/skills/using-git-worktrees` is invoked at the start of Phases 3 and 5. Each dispatched agent gets a worktree path in its prompt; the integration step merges sequentially. CI runs on the integrated branch, not in worktrees. |
+| R16 | Bug or test failure triggers symptom-fixing instead of root-cause investigation | High | Med | `.claude/skills/systematic-debugging` iron law: no fixes without Phase 1 (root-cause investigation). If three fix attempts fail, stop and question architecture per the skill's Phase 4.5. |
 
 ## 7. Open questions for the user
 
@@ -422,3 +429,5 @@ judgekit report --run-id headline_v01 --out results/headline_v01/report.csv
 ```
 
 If all four commands succeed and total spend is logged under $25, ship.
+
+If any worktrees remain under `.worktrees/` at this point, they are work-in-progress. Finalize or remove them before tagging v0.1.0.
