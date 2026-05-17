@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
+import anthropic
 
 from judgekit.clients.anthropic_client import MODEL_ID, AnthropicClient
 from judgekit.clients.base import JudgeResponse
@@ -15,9 +15,16 @@ def _make_mock_anthropic_response(
     input_tokens: int = 55,
     output_tokens: int = 12,
 ) -> MagicMock:
-    """Build a MagicMock that mimics an anthropic Messages response."""
+    """Build a MagicMock that mimics an anthropic Messages response.
+
+    The first content block is specced to anthropic.types.TextBlock so that
+    isinstance() checks in the client implementation pass correctly.
+    """
+    mock_block = MagicMock(spec=anthropic.types.TextBlock)
+    mock_block.text = text
+
     mock_response = MagicMock()
-    mock_response.content = [MagicMock(text=text)]
+    mock_response.content = [mock_block]
     mock_response.usage.input_tokens = input_tokens
     mock_response.usage.output_tokens = output_tokens
     return mock_response
