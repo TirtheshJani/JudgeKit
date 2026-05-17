@@ -163,11 +163,21 @@ def test_compute_all_pairwise_kappa_keys(tmp_path):
 
 
 def test_compute_all_mixed_labels(tmp_path):
-    """Judge A always CORRECT, judge B always INCORRECT → kappa near -1.0."""
-    items = [str(i) for i in range(4)]
+    """Perfect disagreement: judge A and B always disagree, with balanced marginals → kappa = -1.0.
+
+    For Cohen's kappa = -1 we need p_o = 0 and p_e = 0.5.
+    With 4 items: A=[C,C,I,I], B=[I,I,C,C] both have 50/50 marginals,
+    p_e = 0.5*0.5 + 0.5*0.5 = 0.5, p_o = 0, kappa = (0 - 0.5)/(1 - 0.5) = -1.0.
+    """
     records = [
-        *[_make_record(item_id=it, judge_id="judge_a", label="CORRECT") for it in items],
-        *[_make_record(item_id=it, judge_id="judge_b", label="INCORRECT") for it in items],
+        _make_record(item_id="0", judge_id="judge_a", label="CORRECT"),
+        _make_record(item_id="1", judge_id="judge_a", label="CORRECT"),
+        _make_record(item_id="2", judge_id="judge_a", label="INCORRECT"),
+        _make_record(item_id="3", judge_id="judge_a", label="INCORRECT"),
+        _make_record(item_id="0", judge_id="judge_b", label="INCORRECT"),
+        _make_record(item_id="1", judge_id="judge_b", label="INCORRECT"),
+        _make_record(item_id="2", judge_id="judge_b", label="CORRECT"),
+        _make_record(item_id="3", judge_id="judge_b", label="CORRECT"),
     ]
     path = tmp_path / "judgments.jsonl"
     _write_jsonl(path, records)
@@ -175,7 +185,7 @@ def test_compute_all_mixed_labels(tmp_path):
     report = compute_all(path)
 
     kappa_val = next(iter(report.pairwise_kappa.values()))
-    # Perfect disagreement: kappa = -1.0 (or near it depending on marginals)
+    # Perfect disagreement with balanced marginals: kappa = -1.0
     assert kappa_val <= -0.9, f"Expected kappa near -1.0, got {kappa_val}"
 
 
