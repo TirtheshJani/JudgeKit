@@ -6,6 +6,18 @@ Wall-clock target: 1 to 1.5 weeks (8 working days). No external spend until Phas
 
 Five judges, five benchmarks, three agreement statistics, one budget cap. The five judges are fixed by design (Groq Llama 3.3 70B, Cerebras Llama 3.3 70B, SambaNova DeepSeek R1, OpenRouter free-tier, Anthropic Claude Sonnet 4.5). Local Qwen3-8B INT4 via vLLM is an optional sixth judge. The framing asset is the paid Anthropic judge plus visible cost accounting; do not silently drop it to save money.
 
+## 1a. Methodology (skills used)
+
+This plan is governed by five skills installed at `.claude/skills/`. Future Claude sessions in this repo should invoke them by name:
+
+- **writing-plans** governs the format of per-phase plans. PLAN.md is the *roadmap*; before each phase, write a detailed bite-sized TDD plan into `docs/plans/YYYY-MM-DD-phase-N-<name>.md` using this skill, then execute.
+- **executing-plans** governs how those per-phase plans are run (load, review critically, execute task-by-task, stop on blockers).
+- **test-driven-development** is the default for every code-writing task in this repo. No production code without a failing test first. The only exemption pre-agreed with the user is training loops, and JudgeKit has none, so TDD is universal here.
+- **dispatching-parallel-agents** applies in Phases 3 and 5 where multiple independent vendor clients or benchmark adapters can be built concurrently.
+- **karpathy-guidelines** is the behavior baseline: surface assumptions, simplicity first, surgical changes, goal-driven execution.
+
+The `writing-plans` skill suggests `docs/superpowers/plans/` as the plan directory. This repo uses `docs/plans/` instead (no "superpowers" rebrand inside a public package).
+
 ## 2. File tree (target end-of-Phase-6 layout)
 
 ```
@@ -130,6 +142,8 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 
 **Objective.** Every judge call path works against mocked HTTP responses, including 429s, 5xx, malformed bodies, and budget overflow.
 
+**TDD:** Red-green-refactor per `.claude/skills/test-driven-development`. Each task in this phase's per-phase plan file is a bite-sized step (write failing test, run it, implement, run again, commit).
+
 **Work.**
 - `clients/base.py`: `Judge` ABC with `judge(prompt: str, *, max_tokens: int) -> JudgeResponse`. JudgeResponse carries `text`, `prompt_tokens`, `completion_tokens`, `vendor`, `model`, `latency_ms`.
 - `clients/openai_compat.py`: one concrete class, constructor takes (base_url, api_key, model). Used for Groq, Cerebras, SambaNova, OpenRouter, vLLM. Validates response shape, raises typed errors.
@@ -160,6 +174,8 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 
 **Objective.** `judgekit run --config configs/smoke_test.yaml` against Groq + PubMedQA n=10 produces a well-formed JSONL file. Zero spend.
 
+**TDD:** Red-green-refactor per `.claude/skills/test-driven-development`. Each task is a bite-sized step (write failing test, run it, implement, run again, commit).
+
 **Work.**
 - `benchmarks/base.py`: `BenchmarkAdapter` ABC with `iter_items() -> Iterator[BenchmarkItem]`. `BenchmarkItem` has `id`, `question`, `reference_answer`, `metadata`.
 - `benchmarks/pubmedqa.py`: loads from HF `datasets` (`pubmed_qa`, `pqa_labeled` split). Caches locally under `~/.cache/judgekit/datasets/`.
@@ -188,6 +204,10 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 
 **Objective.** A 4-judge live run on PubMedQA n=50 produces a Cohen's kappa pairwise matrix, a Fleiss kappa scalar, and a Krippendorff alpha scalar, all validated against reference implementations.
 
+**TDD:** Red-green-refactor per `.claude/skills/test-driven-development` for both client wiring and agreement statistics.
+
+**Parallel dispatch:** Cerebras, SambaNova, and OpenRouter client wiring are independent of each other (each is a base-URL change plus tests). Per `.claude/skills/dispatching-parallel-agents`, dispatch one agent per vendor, each with the focused scope "wire vendor X through `openai_compat`, add tests for it, do not touch other vendors." Reviewer integrates.
+
 **Work.**
 - Wire Cerebras, SambaNova, OpenRouter through `openai_compat` with their respective base URLs and free-tier model IDs. OpenRouter free-tier model choice: default to `meta-llama/llama-3.3-70b-instruct:free` (subject to availability, see risk R5).
 - Optional: vLLM client config for the local Qwen3-8B judge.
@@ -215,6 +235,8 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 
 **Objective.** Anthropic Claude judge integrated. Pre-flight estimator predicts spend within 10% of actual on the smoke run. Circuit breaker provably blocks overflow.
 
+**TDD:** Red-green-refactor per `.claude/skills/test-driven-development`. The circuit-breaker test (pre-set tracker to overflow, attempt call, assert raise *before* HTTP layer) is the highest-value test in this phase; write it first.
+
 **Work.**
 - `clients/anthropic_client.py` finalized; reads `ANTHROPIC_API_KEY`; model id pinned `claude-sonnet-4-5`.
 - `scripts/estimate_budget.py`: reads a config, walks the benchmark item list, renders prompts, counts tokens via `anthropic.Anthropic.messages.count_tokens` for Anthropic and `tiktoken` (cl100k) for everything else (acknowledge the approximation in the README), multiplies by pricing table, prints a per-vendor breakdown.
@@ -236,6 +258,10 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 ### Phase 5: Remaining benchmarks (1.5 days)
 
 **Objective.** MedQA, MMLU clinical, HumanEval, MBPP all running end-to-end against all five judges on small slices.
+
+**TDD:** Red-green-refactor per `.claude/skills/test-driven-development`. Each adapter starts with a "known item at fixed index has expected fields" test.
+
+**Parallel dispatch:** MedQA, MMLU clinical, HumanEval, and MBPP adapters are independent. Per `.claude/skills/dispatching-parallel-agents`, dispatch one agent per benchmark with scope "implement adapter X with TDD against the HF dataset, do not touch other benchmarks or the runner."
 
 **Work.**
 - `benchmarks/medqa.py`: HF `bigbio/med_qa` or `GBaker/MedQA-USMLE-4-options`; license check.
@@ -259,6 +285,8 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 ### Phase 6: Full run, analysis, tech note, PyPI (2 days)
 
 **Objective.** The headline reproducible run completes under $25, disagreement analysis is interpretable, tech note compiles, package is on PyPI.
+
+**TDD:** TDD applies to `agreement/disagreement.py` and the report generator. The tech note and README are prose, not under TDD.
 
 **Work.**
 - Pre-flight estimate on `configs/all_five_judges.yaml` (5 benchmarks × 5 judges × n per benchmark sized to hit ~$22 on Claude). Iterate on n until estimate is comfortably under $25.
@@ -294,6 +322,18 @@ Each phase has a single objective, a verification gate, and a list of artifacts.
 - Draft PR opened upstream with a maintainer acknowledging or commenting.
 
 **Dependencies.** Phase 6.
+
+## 3a. Per-phase plan files
+
+PLAN.md is the roadmap. Before starting each phase, write a detailed task-by-task plan using the `writing-plans` skill, save it to:
+
+```
+docs/plans/YYYY-MM-DD-phase-N-<short-name>.md
+```
+
+For example: `docs/plans/2026-05-18-phase-1-client-retry-budget.md`.
+
+Each per-phase plan follows the `writing-plans` header format (Goal, Architecture, Tech Stack), decomposes into Tasks with exact file paths, and breaks each task into 2-5 minute steps. After writing it, run the plan-document reviewer prompt from `.claude/skills/writing-plans/plan-document-reviewer-prompt.md` as a subagent dispatch before executing.
 
 ## 4. Phase dependency graph
 
@@ -342,6 +382,8 @@ This sets the headline run size. The other four judges run on the same item set 
 | R10 | Disagreement clusters not interpretable (KMeans on a sparse 5-dim categorical disagreement vector may produce uninformative clusters) | Med | Med | Have a fallback: if elbow gives k=1 or clusters are unbalanced past 90/10, switch to qualitative grouping by (benchmark × dominant-disagreement-pattern). Tech note frames this as exploratory either way. |
 | R11 | PyPI name `judgekit` is taken | Low | Med | Check before Phase 0. If taken, fall back to `judgekit-evals`. |
 | R12 | CI minutes blown on accidental live API calls in tests | Low | Med | `pytest-httpx` configured in strict mode; tests fail if any unmocked HTTP call is attempted. CI does not have API key env vars. |
+| R13 | A phase is executed without a per-phase plan file (drift from methodology) | Med | Med | Each phase's gate now requires the per-phase plan file to exist at `docs/plans/...` before any code is written. Phase 0 acceptance includes adding this rule to `CLAUDE.md`. |
+| R14 | TDD violated under time pressure ("I'll add tests after") | High | Med | The TDD skill's iron law applies: code without a preceding failing test is deleted and re-done. Self-review at end of each phase verifies test-first by inspecting commit order (test commit precedes implementation commit). |
 
 ## 7. Open questions for the user
 
