@@ -1,0 +1,130 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{microtype}
+\usepackage[numbers,sort&compress]{natbib}
+
+\title{JudgeKit: Cross-Vendor LLM-as-Judge Agreement on Medical and Code Benchmarks}
+\author{Tirthesh Jani \\ \texttt{tirtheshjani@gmail.com}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We measure inter-judge agreement across five LLM judges from four vendor families
+on five public benchmarks (PubMedQA, MedQA, MMLU clinical subjects, HumanEval, MBPP),
+under a fixed prompt and a hard \$25 USD spend cap. We report pairwise Cohen's
+$\kappa$, Fleiss' $\kappa$, and Krippendorff's $\alpha$, and characterise the
+recurring modes of disagreement. Code, prompts, and per-judgment outputs are released as
+the \texttt{judgekit} Python package.
+\end{abstract}
+
+\section{Motivation}
+LLM-as-judge is now a default substitute for human raters across alignment, code, and
+medical benchmarks. Single-judge protocols inherit one model's idiosyncrasies; multi-judge
+protocols are rarely instrumented with cost accounting or with structured disagreement
+analysis. JudgeKit fixes both: a uniform interface across five vendor families and a
+disagreement-mode report that complements scalar agreement statistics.
+
+\section{Setup}
+\paragraph{Judges.} See Table~\ref{tab:judges}.
+\paragraph{Benchmarks.} See Table~\ref{tab:benchmarks}. Three medical, two code.
+\paragraph{Prompt.} Two pinned templates (\texttt{medical\_reference\_v1.j2},
+\texttt{code\_reference\_v1.j2}) ask the judge to label
+\textsc{correct} / \textsc{incorrect} / \textsc{uncertain} against a reference
+answer. Final-line parsing tolerates DeepSeek-style reasoning prefaces.
+
+\begin{table}[ht]
+\centering
+\caption{The five judges (free-tier vendors except Anthropic). Model IDs pinned in
+\texttt{configs/all\_five\_judges.yaml}.}
+\label{tab:judges}
+\begin{tabular}{llll}
+\toprule
+Vendor & Model & API style & Tier \\
+\midrule
+Groq        & Llama 3.3 70B Versatile & OpenAI-compat & Free \\
+Cerebras    & Llama 3.3 70B           & OpenAI-compat & Free \\
+SambaNova   & DeepSeek R1             & OpenAI-compat & Free \\
+OpenRouter  & Llama 3.3 70B Instruct  & OpenAI-compat & Free \\
+Anthropic   & Claude Sonnet 4.5       & Anthropic SDK & Paid \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{The five benchmarks.}
+\label{tab:benchmarks}
+\begin{tabular}{llll}
+\toprule
+Benchmark & Domain & Source & License \\
+\midrule
+PubMedQA      & Medical QA   & \texttt{pubmed\_qa} (pqa\_labeled)            & MIT \\
+MedQA-USMLE   & Medical QA   & \texttt{GBaker/MedQA-USMLE-4-options}         & MIT \\
+MMLU clinical & Medical MC   & \texttt{cais/mmlu} (4 clinical subjects)      & MIT \\
+HumanEval     & Code         & \texttt{openai\_humaneval}                    & MIT \\
+MBPP          & Code         & \texttt{mbpp} (sanitized)                     & CC-BY-4.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Agreement results}
+% Filled by the report CSV after the headline run.
+Fleiss' $\kappa$ and Krippendorff's $\alpha$ on the full 5-judge $\times$ 5-benchmark
+matrix are reported in Section~\ref{sec:numbers}. Pairwise $\kappa$ heatmap in
+Figure~\ref{fig:kappa-heatmap}.
+
+\begin{figure}[ht]
+\centering
+% \includegraphics[width=0.8\linewidth]{figures/pairwise_kappa_heatmap.pdf}
+\caption{Pairwise Cohen's $\kappa$ across the five judges. Placeholder.}
+\label{fig:kappa-heatmap}
+\end{figure}
+
+\section{Disagreement modes}
+\texttt{judgekit.agreement.disagreement.cluster\_disagreements} groups per-question
+disagreement vectors with KMeans (elbow over $k \in [3,8]$). For each cluster we report
+the dominant per-judge label pattern and the three most representative items. The full
+table is in the released report CSV.
+
+\section{Cost accounting}
+\label{sec:numbers}
+Total Anthropic spend on the headline run was \$\textbf{TBD}, against a \$25.00 cap
+enforced by \texttt{judgekit.budget.circuit\_breaker}. Per-vendor breakdown:
+
+\begin{table}[ht]
+\centering
+\caption{Spend per vendor. Estimated (from \texttt{judgekit estimate}) vs.\
+realised (from the run manifest).}
+\label{tab:spend}
+\begin{tabular}{lrr}
+\toprule
+Vendor & Estimated (\$) & Actual (\$) \\
+\midrule
+Anthropic   & TBD & TBD \\
+Groq        & 0.00 & 0.00 \\
+Cerebras    & 0.00 & 0.00 \\
+SambaNova   & 0.00 & 0.00 \\
+OpenRouter  & 0.00 & 0.00 \\
+\midrule
+Total       & TBD & TBD \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Limitations}
+Five judges across four vendor families is wide but shallow: 70B-parameter Llama and
+8B-parameter Qwen sample a narrow slice of architecture space. The judge-as-rater protocol
+does not execute candidate code; for HumanEval and MBPP the judge sees a reference
+solution and the question only. Calibrated Bayesian uncertainty over agreement is not
+modelled; bootstrap CIs on $\kappa$ are an obvious next step.
+
+\bibliographystyle{abbrvnat}
+\bibliography{refs}
+
+\end{document}

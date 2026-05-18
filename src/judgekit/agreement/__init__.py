@@ -4,6 +4,7 @@ import itertools
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -40,7 +41,7 @@ def compute_all(jsonl_path: Path) -> AgreementReport:
     Krippendorff's alpha.
     """
     # Load records
-    records: list[dict] = []
+    records: list[dict[str, Any]] = []
     with Path(jsonl_path).open(encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
