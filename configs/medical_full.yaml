@@ -1,0 +1,29 @@
+run_id: medical_full
+seed: 42
+budget_usd: 15.0
+judges:
+  - vendor: groq
+    model: llama-3.3-70b-versatile
+    max_tokens: 256
+  - vendor: cerebras
+    model: llama-3.3-70b
+    max_tokens: 256
+  - vendor: sambanova
+    model: DeepSeek-R1
+    max_tokens: 512
+  - vendor: openrouter
+    model: meta-llama/llama-3.3-70b-instruct:free
+    max_tokens: 256
+  - vendor: anthropic
+    model: claude-sonnet-4-5
+    max_tokens: 256
+benchmarks:
+  - name: pubmedqa
+    n: 1100
+    split: train
+  - name: medqa
+    n: 1100
+    split: test
+  - name: mmlu_clinical
+    n: 1100
+    split: test

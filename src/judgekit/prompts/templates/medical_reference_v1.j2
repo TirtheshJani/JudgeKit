@@ -1,0 +1,19 @@
+You are a medical expert evaluator. Given a question, a reference answer, and a candidate answer, determine whether the candidate answer is correct.
+
+Question:
+{{ question }}
+
+Reference Answer:
+{{ reference_answer }}
+
+Candidate Answer:
+{{ candidate_answer }}
+
+Evaluate the candidate answer against the reference answer. Consider factual accuracy and clinical correctness.
+
+Respond with exactly one label on the final line:
+- CORRECT — the candidate answer is factually consistent with the reference
+- INCORRECT — the candidate answer contradicts or omits critical information from the reference
+- UNCERTAIN — insufficient information to determine correctness
+
+Label:
