@@ -117,3 +117,60 @@ def test_report_command_prints_label_distribution(tmp_path):
 def test_report_exits_nonzero_when_run_not_found(tmp_path):
     result = cli_runner.invoke(app, ["report", "nonexistent_run", "--results-dir", str(tmp_path)])
     assert result.exit_code != 0
+
+
+def _write_golden_jsonl(path):
+    """Deterministic 3-judge x 6-item fixture for golden-CSV test."""
+    judges = [
+        "anthropic/claude-sonnet-4-5",
+        "groq/llama-3.3-70b-versatile",
+        "sambanova/DeepSeek-R1",
+    ]
+    labels_by_judge = {
+        judges[0]: ["CORRECT", "CORRECT", "INCORRECT", "CORRECT", "UNCERTAIN", "CORRECT"],
+        judges[1]: ["CORRECT", "INCORRECT", "INCORRECT", "CORRECT", "UNCERTAIN", "CORRECT"],
+        judges[2]: ["CORRECT", "CORRECT", "INCORRECT", "INCORRECT", "UNCERTAIN", "CORRECT"],
+    }
+    costs_by_judge = {judges[0]: 0.004, judges[1]: 0.0, judges[2]: 0.0}
+    benchmarks = ["pubmedqa", "pubmedqa", "medqa", "medqa", "humaneval", "humaneval"]
+    records = []
+    for jg in judges:
+        for i, lbl in enumerate(labels_by_judge[jg]):
+            records.append(
+                {
+                    "run_id": "golden",
+                    "benchmark_id": benchmarks[i],
+                    "item_id": str(i),
+                    "judge_id": jg,
+                    "label": lbl,
+                    "raw_text": lbl,
+                    "prompt_tokens": 100,
+                    "completion_tokens": 20,
+                    "est_cost_usd": costs_by_judge[jg],
+                    "latency_ms": 100.0,
+                    "error": None,
+                }
+            )
+    path.write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
+
+
+def test_report_golden_csv(tmp_path):
+    from pathlib import Path
+
+    run_dir = tmp_path / "golden"
+    run_dir.mkdir()
+    _write_golden_jsonl(run_dir / "judgments.jsonl")
+
+    out = tmp_path / "report.csv"
+    result = cli_runner.invoke(
+        app, ["report", "golden", "--results-dir", str(tmp_path), "--out", str(out)]
+    )
+    assert result.exit_code == 0, result.output
+    assert out.exists()
+
+    golden = Path("tests/fixtures/golden_report_v1.csv").read_text(encoding="utf-8")
+    actual = out.read_text(encoding="utf-8")
+    assert actual == golden, (
+        "report.csv drifted from golden fixture. "
+        "If the change is intentional, update tests/fixtures/golden_report_v1.csv."
+    )
