@@ -4,6 +4,7 @@ import json
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -47,7 +48,7 @@ def cluster_disagreements(
     from sklearn.cluster import KMeans  # noqa: PLC0415 — deferred import (analysis only)
 
     # --- Load records ---
-    records: list[dict] = []
+    records: list[dict[str, Any]] = []
     with Path(jsonl_path).open(encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -75,12 +76,7 @@ def cluster_disagreements(
         matrix[ii, ji] = _LABEL_MAP.get(label_str, 3)
 
     # --- Filter to disagreeing items (at least 2 judges with different labels) ---
-    disagree_mask = np.array(
-        [
-            not _all_same(matrix[i][matrix[i] >= 0])
-            for i in range(n_items)
-        ]
-    )
+    disagree_mask = np.array([not _all_same(matrix[i][matrix[i] >= 0]) for i in range(n_items)])
     disagree_indices = np.where(disagree_mask)[0]
 
     if len(disagree_indices) < k_min:
