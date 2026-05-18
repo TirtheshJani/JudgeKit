@@ -7,6 +7,10 @@ and accounts token costs against a configurable budget cap.
 from __future__ import annotations
 
 import json
+from collections import Counter
+from datetime import UTC, datetime
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 from judgekit.benchmarks.base import BenchmarkAdapter
@@ -21,6 +25,7 @@ from judgekit.budget.tracker import BudgetTracker
 from judgekit.clients.registry import build_judge
 from judgekit.config import BenchmarkConfig, EvalConfig
 from judgekit.io import JsonlWriter, JudgmentRecord
+from judgekit.manifest import write_manifest
 from judgekit.prompts.loader import PromptLoader
 
 BENCHMARK_REGISTRY: dict[str, type[BenchmarkAdapter]] = {
@@ -74,11 +79,13 @@ def run_eval(config: EvalConfig, output_dir: Path, dry_run: bool = False) -> Pat
 
     Returns the path to the written JSONL file.
     If dry_run=True, returns the expected output path without making any API calls.
+    Also writes a sibling manifest.json describing the run.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     run_dir = output_dir / config.run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     jsonl_path = run_dir / "judgments.jsonl"
+    manifest_path = run_dir / "manifest.json"
 
     if dry_run:
         return jsonl_path
@@ -89,6 +96,13 @@ def run_eval(config: EvalConfig, output_dir: Path, dry_run: bool = False) -> Pat
 
     judges = [build_judge(jc.vendor, jc.model, jc.base_url) for jc in config.judges]
     adapters = [_build_adapter(bc) for bc in config.benchmarks]
+
+    per_benchmark_counts: Counter[str] = Counter()
+    per_judge_counts: Counter[str] = Counter()
+    per_judge_error_counts: Counter[str] = Counter()
+    n_records_written = 0
+
+    started_at = datetime.now(UTC).isoformat()
 
     with JsonlWriter(jsonl_path) as writer:
         for bc, adapter in zip(config.benchmarks, adapters, strict=True):
@@ -106,6 +120,7 @@ def run_eval(config: EvalConfig, output_dir: Path, dry_run: bool = False) -> Pat
                     # Approximate prompt tokens: chars / 4
                     est_prompt_tokens = len(prompt) // 4
                     breaker.check(jc.vendor, jc.model, est_prompt_tokens, jc.max_tokens)
+                    judge_id = f"{jc.vendor}/{jc.model}"
                     try:
                         resp = judge.judge(prompt, max_tokens=jc.max_tokens)
                         label = _parse_label(resp.text)
@@ -122,13 +137,14 @@ def run_eval(config: EvalConfig, output_dir: Path, dry_run: bool = False) -> Pat
                         error = str(exc)
                         est_cost = 0.0
                         resp = None
+                        per_judge_error_counts[judge_id] += 1
 
                     writer.write(
                         JudgmentRecord(
                             run_id=config.run_id,
                             benchmark_id=bc.name,
                             item_id=item.id,
-                            judge_id=f"{jc.vendor}/{jc.model}",
+                            judge_id=judge_id,
                             label=label,
                             raw_text=resp.text if resp else "",
                             prompt_tokens=resp.prompt_tokens if resp else 0,
@@ -138,6 +154,31 @@ def run_eval(config: EvalConfig, output_dir: Path, dry_run: bool = False) -> Pat
                             error=error,
                         )
                     )
+                    n_records_written += 1
+                    per_benchmark_counts[bc.name] += 1
+                    per_judge_counts[judge_id] += 1
+
+    ended_at = datetime.now(UTC).isoformat()
+
+    try:
+        jk_version = _pkg_version("judgekit")
+    except PackageNotFoundError:
+        jk_version = "0.0.0+dev"
+
+    vendor_spend = {v: s.cost_usd for v, s in tracker.vendor_summary().items()}
+
+    write_manifest(
+        manifest_path,
+        config=config,
+        vendor_spend=vendor_spend,
+        n_records_written=n_records_written,
+        per_benchmark_counts=dict(per_benchmark_counts),
+        per_judge_counts=dict(per_judge_counts),
+        per_judge_error_counts=dict(per_judge_error_counts),
+        started_at_iso=started_at,
+        ended_at_iso=ended_at,
+        judgekit_version=jk_version,
+    )
 
     return jsonl_path
 
