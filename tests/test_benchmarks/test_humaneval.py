@@ -9,14 +9,14 @@ from judgekit.benchmarks.humaneval import HumanEvalAdapter
 FAKE_ITEMS = [
     {
         "task_id": "HumanEval/0",
-        "prompt": "def add(a: int, b: int) -> int:\n    \"\"\"Add two numbers.\"\"\"\n",
+        "prompt": 'def add(a: int, b: int) -> int:\n    """Add two numbers."""\n',
         "canonical_solution": "    return a + b\n",
         "test": "def check(candidate):\n    assert candidate(1, 2) == 3\n",
         "entry_point": "add",
     },
     {
         "task_id": "HumanEval/1",
-        "prompt": "def mul(a: int, b: int) -> int:\n    \"\"\"Multiply.\"\"\"\n",
+        "prompt": 'def mul(a: int, b: int) -> int:\n    """Multiply."""\n',
         "canonical_solution": "    return a * b\n",
         "test": "def check(candidate):\n    assert candidate(2, 3) == 6\n",
         "entry_point": "mul",

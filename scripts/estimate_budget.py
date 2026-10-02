@@ -18,9 +18,11 @@ def main() -> None:
     total_cost = 0.0
     total_calls = 0
     for row in rows:
-        print(f"  {row['vendor']}/{row['model']}: {row['n_items']} calls, ~${row['est_cost_usd']:.4f} USD")
-        total_cost += row['est_cost_usd']
-        total_calls += row['n_items']
+        print(
+            f"  {row['vendor']}/{row['model']}: {row['n_items']} calls, ~${row['est_cost_usd']:.4f} USD"
+        )
+        total_cost += row["est_cost_usd"]
+        total_calls += row["n_items"]
     print(f"Total: {total_calls * len(cfg.judges)} calls, ~${total_cost:.4f} USD")
 
 

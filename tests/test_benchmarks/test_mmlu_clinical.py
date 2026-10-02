@@ -17,9 +17,7 @@ FAKE_DATASET = [FAKE_ROW, FAKE_ROW]  # 2 records per subject call
 
 def test_mmlu_clinical_returns_correct_shape():
     """Items have the required fields: id, question, reference_answer, metadata."""
-    with patch(
-        "judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET
-    ):
+    with patch("judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET):
         adapter = MMLUClinicalAdapter(subjects=["anatomy"], n=1)
         items = list(adapter.iter_items())
 
@@ -34,9 +32,7 @@ def test_mmlu_clinical_returns_correct_shape():
 
 def test_mmlu_clinical_n_limits_items():
     """n=1 yields exactly 1 item total across all subjects."""
-    with patch(
-        "judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET
-    ):
+    with patch("judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET):
         adapter = MMLUClinicalAdapter(n=1)
         items = list(adapter.iter_items())
 
@@ -45,9 +41,7 @@ def test_mmlu_clinical_n_limits_items():
 
 def test_mmlu_clinical_n_none_yields_all_items():
     """n=None yields all items: 2 per subject × 4 subjects = 8 total."""
-    with patch(
-        "judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET
-    ):
+    with patch("judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET):
         adapter = MMLUClinicalAdapter(n=None)
         items = list(adapter.iter_items())
 
@@ -56,9 +50,7 @@ def test_mmlu_clinical_n_none_yields_all_items():
 
 def test_mmlu_clinical_id_format():
     """id contains subject name and underscore-separated index."""
-    with patch(
-        "judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET
-    ):
+    with patch("judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET):
         adapter = MMLUClinicalAdapter(subjects=["anatomy"], n=2)
         items = list(adapter.iter_items())
 
@@ -70,9 +62,7 @@ def test_mmlu_clinical_id_format():
 
 def test_mmlu_clinical_reference_answer_is_letter():
     """answer int 2 maps to letter 'C'."""
-    with patch(
-        "judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET
-    ):
+    with patch("judgekit.benchmarks.mmlu_clinical.load_dataset", return_value=FAKE_DATASET):
         adapter = MMLUClinicalAdapter(subjects=["anatomy"], n=1)
         items = list(adapter.iter_items())
 
