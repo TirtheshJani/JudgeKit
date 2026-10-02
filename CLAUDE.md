@@ -4,19 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What JudgeKit is
 
-A Python package (`judgekit`, to be published to PyPI) that runs the same prompt set across five LLM judges from different vendor families, then reports cross-judge agreement statistics and disagreement clustering. The product framing is deliberate: a multi-judge framework with explicit cost accounting, not a "GPT-4 as judge" wrapper.
+A Python package (`src/judgekit`) that runs the same prompt set across five LLM judges from different vendor families, then reports cross-judge agreement statistics and disagreement clustering. The product framing is deliberate: a multi-judge framework with explicit cost accounting, not a "GPT-4 as judge" wrapper.
 
-The repo is currently a stub (LICENSE, one-line README, this file). No source, tests, or config yet. The sections below describe the **intended design** so the first scaffolding session stays consistent with the project's framing.
+The package is implemented: CLI (`judgekit run | estimate | report`), vendor clients, five benchmark adapters, agreement statistics, disagreement clustering, budget tracking, run manifests, eval configs, an offline test suite, CI and a PyPI publish workflow. The headline five-judge run has **not** been executed yet, so there are no real results; `paper/` is a skeleton with TBD placeholders. Never invent numbers to fill them.
 
-The five judges are fixed by design. Do not silently swap or drop one without flagging it:
+The five judges are fixed by design (see `configs/all_five_judges.yaml`). Do not silently swap or drop one without flagging it:
 
 | Judge | Vendor | API style |
 | --- | --- | --- |
-| Llama 3.3 70B | Groq | OpenAI-compatible |
-| Llama 3.3 70B | Cerebras | OpenAI-compatible |
-| DeepSeek R1 | SambaNova | OpenAI-compatible |
-| Qwen3-8B INT4 | local vLLM | OpenAI-compatible |
-| Claude Sonnet 4.5 (`claude-sonnet-4-5`) | Anthropic | Anthropic SDK (wrapped to look OpenAI-compatible) |
+| Llama 3.3 70B (`llama-3.3-70b-versatile`) | Groq | OpenAI-compatible |
+| Llama 3.3 70B (`llama-3.3-70b`) | Cerebras | OpenAI-compatible |
+| DeepSeek R1 (`DeepSeek-R1`) | SambaNova | OpenAI-compatible |
+| Llama 3.3 70B free (`meta-llama/llama-3.3-70b-instruct:free`) | OpenRouter | OpenAI-compatible |
+| Claude Sonnet 4.5 (`claude-sonnet-4-5`) | Anthropic | Anthropic SDK (wrapped to the same `Judge` interface) |
+
+Optional sixth judge: Qwen3-8B INT4 on local vLLM (`vendor: vllm`), not in the headline config.
+
+PyPI note: the distribution name `judgekit` is already taken on PyPI by an unrelated project. The publish workflow will fail (or publish nothing useful) until a distinct name is chosen. Flag this to the user before tagging a release.
 
 The paid Anthropic judge is load-bearing for the project's positioning; it is the "deliberate cost-discipline tradeoff" framing. Total experiment cost target: **under $25 USD**. Token-budget accounting must be visible in outputs/reports.
 
@@ -43,12 +47,23 @@ The local vLLM endpoint needs no key; default to `http://localhost:8000/v1` unle
 
 ## Commands
 
-The only command fixed at this point is the local judge server. Add `pytest` / lint / build commands here once `pyproject.toml` exists.
-
 ```bash
-# Serve Qwen3-8B INT4 as the local judge (RTX 4080)
-vllm serve Qwen/Qwen3-8B --quantization awq --gpu-memory-utilization 0.85 --max-model-len 4096
+uv sync --group dev                       # install (dev deps are a [dependency-groups] group, not an extra)
+uv run ruff check .                       # lint (CI)
+uv run ruff format --check .              # format check (CI)
+uv run mypy src/judgekit                  # strict type check (CI)
+uv run pytest --tb=short                  # full offline test suite (CI)
+uv run pytest tests/test_cli.py -k golden # single test
+
+uv run python examples/agreement_demo.py                     # offline demo, synthetic data
+uv run judgekit estimate --config configs/all_five_judges.yaml   # pre-flight cost, no network
+uv run judgekit run --config configs/smoke_test.yaml --run-id smoke   # needs GROQ_API_KEY
+uv run judgekit report <run_id> --out results/<run_id>/report.csv
+
+bash scripts/serve_qwen_vllm.sh           # local Qwen3-8B judge (needs CUDA GPU)
 ```
+
+`tests/test_cli.py::test_report_golden_csv` compares report output byte-for-byte to `tests/fixtures/golden_report_v1.csv`; update the fixture only for intentional format changes.
 
 ## Deliverables
 
@@ -60,9 +75,8 @@ vllm serve Qwen/Qwen3-8B --quantization awq --gpu-memory-utilization 0.85 --max-
 
 ## Working in this repo
 
-- **Branch**: develop on `claude/multi-judge-evals-xvHDQ` (the current branch). Do not push to other branches without explicit permission.
-- **No build/test/lint commands exist yet.** Add them to this file once the package is scaffolded (pyproject.toml, pytest config, etc.).
-- When scaffolding, prefer `pyproject.toml` + `src/judgekit/` layout so the PyPI package is the primary artifact from day one.
+- **Branch**: develop on a feature branch (e.g. `claude/<topic>`) and open a PR to `main`. Never push to `main` without explicit permission.
+- Keep `ruff format --check .` clean; CI fails on unformatted files.
 - Keep cost accounting first-class: any judge-call code path should account tokens against a per-run budget the user can see.
 
 ## Skills

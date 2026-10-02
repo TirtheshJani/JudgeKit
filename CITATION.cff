@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use JudgeKit, please cite it using this metadata."
+title: "JudgeKit: cross-vendor LLM-as-judge evaluation with agreement statistics and budget accounting"
+type: software
+authors:
+  - given-names: Tirthesh
+    family-names: Jani
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/TirtheshJani/JudgeKit"
+keywords:
+  - LLM-as-judge
+  - inter-rater agreement
+  - Cohen's kappa
+  - Krippendorff's alpha
+  - evaluation
