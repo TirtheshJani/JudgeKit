@@ -35,9 +35,7 @@ class MMLUClinicalAdapter(BenchmarkAdapter):
         all_items: Iterator[Any] = itertools.chain.from_iterable(
             (
                 (subject, idx, row)
-                for idx, row in enumerate(
-                    load_dataset("cais/mmlu", subject, split=self._split)
-                )
+                for idx, row in enumerate(load_dataset("cais/mmlu", subject, split=self._split))
             )
             for subject in self._subjects
         )

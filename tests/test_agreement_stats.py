@@ -99,30 +99,30 @@ def test_fleiss_kappa_known_value():
 
     Reference value: fleiss_kappa ≈ 0.4060 (verified via statsmodels).
     """
-    ratings = np.array([
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1],
-        [0, 0, 0, 0, 1, 1],
-        [0, 0, 0, 1, 1, 1],
-        [0, 0, 1, 1, 1, 1],
-        [0, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, 1, 2],
-        [1, 1, 1, 1, 2, 2],
-        [1, 1, 1, 2, 2, 2],
-        [1, 1, 2, 2, 2, 2],
-        [1, 2, 2, 2, 2, 2],
-        [2, 2, 2, 2, 2, 2],
-        [0, 0, 0, 1, 2, 2],
-    ])
+    ratings = np.array(
+        [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1],
+            [0, 0, 0, 0, 1, 1],
+            [0, 0, 0, 1, 1, 1],
+            [0, 0, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 2],
+            [1, 1, 1, 1, 2, 2],
+            [1, 1, 1, 2, 2, 2],
+            [1, 1, 2, 2, 2, 2],
+            [1, 2, 2, 2, 2, 2],
+            [2, 2, 2, 2, 2, 2],
+            [0, 0, 0, 1, 2, 2],
+        ]
+    )
     # statsmodels reference
     counts, _ = aggregate_raters(ratings)
     expected = sm_fleiss_kappa(counts)  # ≈ 0.4060235704932346
 
     result = fleiss_kappa(ratings, n_categories=3)
-    assert abs(result - expected) < 1e-4, (
-        f"Got {result}, expected {expected}"
-    )
+    assert abs(result - expected) < 1e-4, f"Got {result}, expected {expected}"
 
 
 def test_fleiss_kappa_cross_check_statsmodels():
@@ -130,17 +130,17 @@ def test_fleiss_kappa_cross_check_statsmodels():
 
     statsmodels reference: fleiss_kappa ≈ 0.1870.
     """
-    ratings = np.array([
-        [0, 0, 1, 0],
-        [1, 1, 1, 0],
-        [0, 1, 0, 0],
-        [2, 2, 2, 1],
-        [1, 0, 1, 1],
-    ])
+    ratings = np.array(
+        [
+            [0, 0, 1, 0],
+            [1, 1, 1, 0],
+            [0, 1, 0, 0],
+            [2, 2, 2, 1],
+            [1, 0, 1, 1],
+        ]
+    )
     counts, _ = aggregate_raters(ratings)
     expected = sm_fleiss_kappa(counts)  # ≈ 0.1869918699186991
 
     result = fleiss_kappa(ratings, n_categories=3)
-    assert abs(result - expected) < 1e-4, (
-        f"Got {result}, expected {expected}"
-    )
+    assert abs(result - expected) < 1e-4, f"Got {result}, expected {expected}"

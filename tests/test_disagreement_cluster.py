@@ -120,7 +120,9 @@ def test_compute_all_returns_agreement_report(tmp_path):
     """2 judges × 5 items, all CORRECT → fleiss=1.0, alpha=1.0, n_items=5, 2 judges."""
     judges = ["judge_a", "judge_b"]
     items = [str(i) for i in range(5)]
-    records = [_make_record(item_id=it, judge_id=jg, label="CORRECT") for jg in judges for it in items]
+    records = [
+        _make_record(item_id=it, judge_id=jg, label="CORRECT") for jg in judges for it in items
+    ]
     path = tmp_path / "judgments.jsonl"
     _write_jsonl(path, records)
 
@@ -146,7 +148,9 @@ def test_compute_all_pairwise_kappa_keys(tmp_path):
     """2 judges → exactly 1 pair in pairwise_kappa dict, value == 1.0."""
     judges = ["judge_a", "judge_b"]
     items = [str(i) for i in range(5)]
-    records = [_make_record(item_id=it, judge_id=jg, label="CORRECT") for jg in judges for it in items]
+    records = [
+        _make_record(item_id=it, judge_id=jg, label="CORRECT") for jg in judges for it in items
+    ]
     path = tmp_path / "judgments.jsonl"
     _write_jsonl(path, records)
 

@@ -93,7 +93,9 @@ def krippendorff_alpha(
     return float(1.0 - o_d / e_d)
 
 
-def _distance_matrix(value_domain: NDArray[np.float64], level_of_measurement: str) -> NDArray[np.float64]:
+def _distance_matrix(
+    value_domain: NDArray[np.float64], level_of_measurement: str
+) -> NDArray[np.float64]:
     """Return (n_vals, n_vals) pairwise distance matrix."""
     n = len(value_domain)
     d = np.zeros((n, n), dtype=np.float64)
