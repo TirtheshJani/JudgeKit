@@ -5,8 +5,7 @@ Cross-vendor LLM-as-judge evaluation. Runs the same prompt set across five judge
 ## Install
 
 ```bash
-uv pip install judgekit
-# or, from source:
+# from source:
 git clone https://github.com/TirtheshJani/JudgeKit
 cd JudgeKit
 uv sync --group dev
