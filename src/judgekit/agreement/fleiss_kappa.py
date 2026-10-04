@@ -37,7 +37,7 @@ def fleiss_kappa(ratings: NDArray[np.int_], n_categories: int) -> float:
     P_i = (n_ij * (n_ij - 1)).sum(axis=1) / (n_raters * (n_raters - 1))
 
     P_bar = P_i.mean()
-    P_e = (p_j ** 2).sum()
+    P_e = (p_j**2).sum()
 
     if P_e == 1.0:
         # Degenerate: all assignments in one category and all items agree.

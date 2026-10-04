@@ -65,8 +65,7 @@ def estimate_config(config: EvalConfig, max_tokens: int = 256) -> list[dict[str,
         est_input = n_items * _APPROX_INPUT_TOKENS
         est_output = n_items * max_tokens
         est_cost = (
-            est_input / 1000 * pricing.input_per_1k
-            + est_output / 1000 * pricing.output_per_1k
+            est_input / 1000 * pricing.input_per_1k + est_output / 1000 * pricing.output_per_1k
         )
         rows.append(
             {
